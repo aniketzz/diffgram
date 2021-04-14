@@ -102,21 +102,21 @@ class DiffgramInstallTool:
             env_file = 'GCP_SERVICE_ACCOUNT_FILE_PATH={}\n'.format(self.gcp_credentials_path)
             env_file += 'CLOUD_STORAGE_BUCKET={}\n'.format(self.bucket_name)
             env_file += 'ML__CLOUD_STORAGE_BUCKET={}\n'.format(self.bucket_name)
-            env_file += 'SAME_HOST=False\n'.format(self.bucket_name)
+            env_file += 'SAME_HOST=False\n'
             env_file += 'DIFFGRAM_STATIC_STORAGE_PROVIDER={}\n'.format(self.static_storage_provider)
         elif self.static_storage_provider == 'aws':
             env_file = 'DIFFGRAM_AWS_ACCESS_KEY_ID={}\n'.format(self.s3_access_id)
             env_file += 'DIFFGRAM_AWS_ACCESS_KEY_SECRET={}\n'.format(self.s3_access_secret)
             env_file += 'DIFFGRAM_S3_BUCKET_NAME={}\n'.format(self.bucket_name)
             env_file += 'ML__DIFFGRAM_S3_BUCKET_NAME={}\n'.format(self.bucket_name)
-            env_file += 'SAME_HOST=False\n'.format(self.bucket_name)
+            env_file += 'SAME_HOST=False\n'
             env_file += 'DIFFGRAM_STATIC_STORAGE_PROVIDER={}\n'.format(self.static_storage_provider)
             env_file += 'GCP_SERVICE_ACCOUNT_FILE_PATH={}\n'.format('/dev/null')
         elif self.static_storage_provider == 'azure':
             env_file = 'DIFFGRAM_AZURE_CONNECTION_STRING={}\n'.format(self.azure_connection_string)
             env_file += 'DIFFGRAM_AZURE_CONTAINER_NAME={}\n'.format(self.bucket_name)
             env_file += 'ML__DIFFGRAM_AZURE_CONTAINER_NAME={}\n'.format(self.bucket_name)
-            env_file += 'SAME_HOST=False\n'.format(self.bucket_name)
+            env_file += 'SAME_HOST=False\n'
             env_file += 'DIFFGRAM_STATIC_STORAGE_PROVIDER={}\n'.format(self.static_storage_provider)
             env_file += 'GCP_SERVICE_ACCOUNT_FILE_PATH={}\n'.format('/dev/null')
 

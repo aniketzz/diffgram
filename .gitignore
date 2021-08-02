@@ -164,3 +164,12 @@ shared/settings/secrets.py
 .idea/
 git_ignore/*
 run_dev/*
+
+default/play_and_scripts/pytorch_obj_tutorial/VOCdevkit/VOC2012/Annotations/
+
+default/play_and_scripts/pytorch_obj_tutorial/VOCdevkit/VOC2012/ImageSets/Action/
+default/play_and_scripts/pytorch_obj_tutorial/VOCdevkit/*
+
+default/play_and_scripts/pytorch_obj_tutorial/VOCtest_06-Nov-2007.tar
+default/play_and_scripts/pytorch_obj_tutorial/VOCtrainval_11-May-2012.tar
+default/play_and_scripts/pytorch_obj_tutorial/VOCtrainval_06-Nov-2007.tar

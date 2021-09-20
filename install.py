@@ -12,12 +12,17 @@ import uuid
 import requests
 import datetime
 
+import oci
+from oci.config import validate_config
+from oci.object_storage import ObjectStorageClient
+
 from google.cloud import storage
 from azure.storage.blob import BlobServiceClient, ContentSettings
 from azure.storage.blob._models import BlobSasPermissions
 from azure.storage.blob._shared_access_signature import BlobSharedAccessSignature
 from google.oauth2 import service_account
 
+# import file
 
 try:
     from sqlalchemy import create_engine
@@ -61,6 +66,13 @@ class DiffgramInstallTool:
     gcp_credentials_path = None
     s3_access_id = None
     s3_access_secret = None
+
+    oci_user_ocid = None
+    oci_fingerprint = None
+    oci_key = None
+    oci_tenancy_ocid = None
+    oci_region = None
+
     azure_connection_string = None
     diffgram_version = None
     database_url = None
@@ -73,6 +85,8 @@ class DiffgramInstallTool:
             self.static_storage_provider = 'aws'
         elif option_number == 3:
             self.static_storage_provider = 'azure'
+        elif option_number == 4:
+            self.static_storage_provider = 'oci'
 
     def set_gcp_credentials(self):
         is_valid = False
@@ -103,6 +117,7 @@ class DiffgramInstallTool:
             self.bucket_name = 'diffgram-storage'
         else:
             self.bucket_name = bucket_name
+
 
     def validate_azure_connection(self):
         connection_string = self.azure_connection_string
@@ -232,6 +247,74 @@ class DiffgramInstallTool:
         bcolors.printcolor('Connection to GCP Successful!', bcolors.OKGREEN)
         return True
 
+    def validate_oci_connection(self):
+
+        test_file_path = 'diffgram_test_file.txt'
+        client = None
+        bcolors.printcolor('Testing Connection...', bcolors.OKBLUE)
+        bucket_name = self.bucket_name
+        # config = {
+        #             "user":self.oci_user_ocid,
+        #             "fingerprint":self.oci_fingerprint,
+        #             "key_file":self.oci_key,
+        #             "tenancy":self.oci_tenancy_ocid,
+        #             "region":self.oci_region
+        #         }
+        config = oci.config.from_file()
+
+        validate_config(config)
+        
+        bcolors.printcolor("Validate config OK",bcolors.OKGREEN)
+
+        try:
+            object_storage_client = ObjectStorageClient(config)
+            print(bcolors.OKGREEN + '[OK] ' + '\033[0m' + 'Connection To OCI Account')
+            bcolors.printcolor("Fetching Bucket Namespace",bcolors.OKBLUE)
+            # get the namespace
+            namespace = object_storage_client.get_namespace().data
+            print(bcolors.OKGREEN + "Namespace:" + namespace)
+
+
+        except Exception as e:
+            print(bcolors.FAIL + '[ERROR] ' + '\033[0m' + 'Connection To OCI Account')
+            bcolors.printcolor('Error Connecting to OCI: Please check you entered valid credentials.', bcolors.FAIL)
+            print('Details: {}'.format(traceback.format_exc()))
+            bcolors.printcolor('Please update credentials and try again', bcolors.OKBLUE)
+            return False
+        time.sleep(0.5)
+
+        try:
+            Body = b'This is a diffgram test file'
+            object_storage_client.put_object(namespace, bucket_name, test_file_path, Body)
+            print(bcolors.OKGREEN + '[OK] ' + '\033[0m' + 'Write Permissions')
+        except:
+            print(bcolors.FAIL + '[ERROR] ' + '\033[0m' + 'Write Permissions')
+            bcolors.printcolor('Error Connecting to OCI: Please check you have write permissions on the OCI bucket.',
+                               bcolors.FAIL)
+            print('Details: {}'.format(traceback.format_exc()))
+            bcolors.printcolor('Please update permissions and try again', bcolors.OKBLUE)
+            return False
+        time.sleep(0.5)
+
+        try:
+            signed_url = object_storage_client.get_object(namespace, bucket_name, test_file_path)
+            resp = signed_url.data
+            if resp.status_code != 200:
+                raise Exception(
+                    'Error when accessing presigned URL: Status({}). Error: {}'.format(resp.status_code, resp.text))
+
+            print(bcolors.OKGREEN + '[OK] ' + '\033[0m' + 'Read Permissions')
+        except:
+            print(bcolors.WARNING + '[ERROR] ' + '\033[0m' + 'Read Permissions')
+            bcolors.printcolor('Error Connecting to OCI: Please check you have read permissions on the OCI bucket.',
+                               bcolors.WARNING)
+            print('Details: {}'.format(traceback.format_exc()))
+            bcolors.printcolor('Please update permissions and try again', bcolors.OKBLUE)
+            return False
+        time.sleep(0.5)
+        bcolors.printcolor('Connection to OCI Successful!', bcolors.OKGREEN)
+        return True
+
     def validate_s3_connection(self):
         access_id = self.s3_access_id
         access_secret = self.s3_access_secret
@@ -316,6 +399,72 @@ class DiffgramInstallTool:
         else:
             self.bucket_name = bucket_name
 
+    def set_oci_credentials(self):
+
+        bcolors.printcolor("[*] Setup oci config.", bcolors.WARNING)
+        bcolors.printcolor("In a new Terminal run: oci setup config ",bcolors.WARNING)
+        # # Ask for user ocid
+        # is_valid = False
+        # while not is_valid:
+        #     oci_user_ocid = bcolors.inputcolor('Please provide the OCI User OCID : ')
+        #     if oci_user_ocid == '':
+        #         print('Please a enter a valid value.')
+        #         continue
+        #     else:
+        #         self.oci_user_ocid = oci_user_ocid
+        #         is_valid = True
+        
+        # #Ask access key
+        # is_valid = False
+        # while not is_valid:
+        #     oci_key = bcolors.inputcolor('Please provide the OCI Key (.pem file) : ')
+        #     if oci_key == '':
+        #         print('Please a enter a valid value.')
+        #         continue
+        #     else:
+        #         self.oci_key = oci_key
+        #         is_valid = True
+
+        # #Ask for key fingerprint
+        # is_valid = False
+        # while not is_valid:
+        #     oci_fingerprint = bcolors.inputcolor('Please provide the OCI key Fingerprint : ')
+        #     if oci_fingerprint == '':
+        #         print('Please a enter a valid value.')
+        #         continue
+        #     else:
+        #         self.oci_fingerprint = oci_fingerprint
+        #         is_valid = True
+        
+        # #Ask for tenancy ocid
+        # is_valid = False
+        # while not is_valid:
+        #     oci_tenancy_ocid = bcolors.inputcolor('Please provide the OCI Tenancy OCID : ')
+        #     if oci_tenancy_ocid == '':
+        #         print('Please a enter a valid value.')
+        #         continue
+        #     else:
+        #         self.oci_tenancy_ocid = oci_tenancy_ocid
+        #         is_valid = True
+
+        # # Ask for Home Region
+        # is_valid = False
+        # while not is_valid:
+        #     oci_region = bcolors.inputcolor('Please provide the OCI Home Region : ')
+        #     if oci_region == '':
+        #         print('Please a enter a valid value.')
+        #         continue
+        #     else:
+        #         self.oci_region = oci_region
+        #         is_valid = True
+
+        # Ask for bucket name
+        bucket_name = bcolors.inputcolor('Please provide the OCI BUCKET Name [Default is diffgram_buk]: ')
+        if bucket_name == '':
+            self.bucket_name = 'diffgram_buk'
+        else:
+            self.bucket_name = bucket_name
+
     def set_azure_credentials(self):
         # Ask For Access Key ID
         is_valid = False
@@ -376,6 +525,32 @@ class DiffgramInstallTool:
             env_file += 'SAME_HOST=False\n'.format(self.bucket_name)
             env_file += 'DIFFGRAM_STATIC_STORAGE_PROVIDER={}\n'.format(self.static_storage_provider)
             env_file += 'GCP_SERVICE_ACCOUNT_FILE_PATH={}\n'.format('/dev/null')
+        
+        elif self.static_storage_provider == 'oci':
+            config = oci.config.from_file()
+            data = [value for value in config.values()]
+            env_file = 'DIFFGRAM_OCI_USER_OCID={}\n'.format(data[2])
+            env_file += 'DIFFGRAM_OCI_FINGERPRINT={}\n'.format(data[3])
+            env_file += 'DIFFGRAM_OCI_KEY={}\n'.format(data[4])
+            env_file += 'DIFFGRAM_OCI_TENANCY_OCID={}\n'.format(data[5])
+            env_file += 'DIFFGRAM_OCI_REGION={}\n'.format(data[6])
+            env_file += 'DIFFGRAM_OCI_CONTAINER_NAME={}\n'.format(self.bucket_name)
+            env_file += 'ML__DIFFGRAM_AZURE_CONTAINER_NAME={}\n'.format(self.bucket_name)
+            env_file += 'SAME_HOST=False\n'.format(self.bucket_name)
+            env_file += 'DIFFGRAM_STATIC_STORAGE_PROVIDER={}\n'.format(self.static_storage_provider)
+            env_file += 'GCP_SERVICE_ACCOUNT_FILE_PATH={}\n'.format('/dev/null')
+        
+        # elif self.static_storage_provider == 'oci':
+        #     env_file = 'DIFFGRAM_OCI_USER_OCID={}\n'.format(self.oci_user_ocid)
+        #     env_file += 'DIFFGRAM_OCI_FINGERPRINT={}\n'.format(self.oci_fingerprint)
+        #     env_file += 'DIFFGRAM_OCI_KEY={}\n'.format(self.oci_key)
+        #     env_file += 'DIFFGRAM_OCI_TENANCY_OCID={}\n'.format(self.oci_tenancy_ocid)
+        #     env_file += 'DIFFGRAM_OCI_REGION={}\n'.format(self.region)
+        #     env_file += 'DIFFGRAM_OCI_CONTAINER_NAME={}\n'.format(self.bucket_name)
+        #     env_file += 'ML__DIFFGRAM_AZURE_CONTAINER_NAME={}\n'.format(self.bucket_name)
+        #     env_file += 'SAME_HOST=False\n'.format(self.bucket_name)
+        #     env_file += 'DIFFGRAM_STATIC_STORAGE_PROVIDER={}\n'.format(self.static_storage_provider)
+        #     env_file += 'GCP_SERVICE_ACCOUNT_FILE_PATH={}\n'.format('/dev/null')
 
         fernet_key = base64.urlsafe_b64encode(os.urandom(32))
         env_file += 'FERNET_KEY={}\n'.format(fernet_key)
@@ -464,11 +639,13 @@ class DiffgramInstallTool:
         print('1. Google Cloud Storage (GCP)')
         print('2. Amazon Web Services S3 (AWS S3)')
         print('3. Microsoft Azure Storage (Azure)')
+        print('4. Oracle Cloud Storage (OCI)')
+
         option_valid = False
         while not option_valid:
-            option = bcolors.inputcolor('Enter 1, 2 or 3. Or write exit to quit the installation: ')
+            option = bcolors.inputcolor('Enter 1, 2, 3 or 4. Or write exit to quit the installation: ')
 
-            if option.isnumeric() and int(option) in [1, 2, 3]:
+            if option.isnumeric() and int(option) in [1, 2, 3, 4]:
                 option_valid = True
                 self.set_static_storage_option(int(option))
             elif option == 'exit':
@@ -476,7 +653,7 @@ class DiffgramInstallTool:
                 print('Thanks for using Diffgram :)')
                 return
             else:
-                print('Invalid option. Please enter either 1,2 or 3. Write exit to quit the installation process.')
+                print('Invalid option. Please enter either 1, 2, 3 or 4. Write exit to quit the installation process.')
 
         if self.static_storage_provider == 'gcp':
             self.set_gcp_credentials()
@@ -489,6 +666,11 @@ class DiffgramInstallTool:
         elif self.static_storage_provider == 'azure':
             self.set_azure_credentials()
             if not self.validate_azure_connection():
+                return
+        
+        elif self.static_storage_provider == 'oci':
+            self.set_oci_credentials()
+            if not self.validate_oci_connection():
                 return
 
         self.set_diffgram_version()
